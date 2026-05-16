@@ -5,12 +5,12 @@
 <!-- <img src="assets/banner.png" width="100%" alt="CityMind Banner"/> -->
 
 ```
-░█████╗░██╗████████╗██╗   ██╗███╗   ███╗██╗███╗   ██╗██████╗
-██╔══██╗██║╚══██╔══╝╚██╗ ██╔╝████╗ ████║██║████╗  ██║██╔══██╗
-██║  ╚═╝██║   ██║    ╚████╔╝ ██╔████╔██║██║██╔██╗ ██║██║  ██║
-██║  ██╗██║   ██║     ╚██╔╝  ██║╚██╔╝██║██║██║╚██╗██║██║  ██║
-╚█████╔╝██║   ██║      ██║   ██║ ╚═╝ ██║██║██║ ╚████║██████╔╝
- ╚════╝ ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═════╝
+    ░█████╗░██╗████████╗██╗   ██╗███╗   ███╗██╗███╗   ██╗██████╗
+    ██╔══██╗██║╚══██╔══╝╚██╗ ██╔╝████╗ ████║██║████╗  ██║██╔══██╗
+    ██║  ╚═╝██║   ██║    ╚████╔╝ ██╔████╔██║██║██╔██╗ ██║██║  ██║
+    ██║  ██╗██║   ██║     ╚██╔╝  ██║╚██╔╝██║██║██║╚██╗██║██║  ██║
+    ╚█████╔╝██║   ██║      ██║   ██║ ╚═╝ ██║██║██║ ╚████║██████╔╝
+    ╚════╝ ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═════╝
 ```
 
 <h1>🏙️ CityMind — Urban Intelligence System</h1>
@@ -37,27 +37,35 @@
 
 ## 📸 Interface Preview
 
-> Replace the placeholders below with your actual screenshots
 
 <div align="center">
 
 | 🗺️ City Layout | 🛣️ Road Network |
 |:-:|:-:|
 | <!-- <img src="assets/city-layout.png" width="420"/> --> | <!-- <img src="assets/road-network.png" width="420"/> --> |
-| `[📸 PASTE YOUR CITY LAYOUT SCREENSHOT HERE]` | `[📸 PASTE YOUR ROAD NETWORK SCREENSHOT HERE]` |
+| <img width="1919" height="946" alt="image" src="https://github.com/user-attachments/assets/caf49336-326b-428c-8086-6605c35b2d6c" /> | <img width="1919" height="946" alt="image" src="https://github.com/user-attachments/assets/f923eb9a-94b9-49a3-beeb-3e7ea36df766" />
+ |
 | *CSP backtracking assigns every building* | *Kruskal's MST — 63 edges, minimum cost* |
 
 | 🚑 Ambulance Coverage | 🔴 Crime Heatmap |
 |:-:|:-:|
 | <!-- <img src="assets/ambulance.png" width="420"/> --> | <!-- <img src="assets/heatmap.png" width="420"/> --> |
-| `[📸 PASTE YOUR AMBULANCE COVERAGE SCREENSHOT HERE]` | `[📸 PASTE YOUR CRIME HEATMAP SCREENSHOT HERE]` |
+| <img width="1919" height="950" alt="image" src="https://github.com/user-attachments/assets/a5fcc847-ead9-4e1f-a528-e11e1ab9b263" /> | <img width="1919" height="939" alt="image" src="https://github.com/user-attachments/assets/2592df7a-3039-4694-86c7-d55bd3e136c3" />
+ |
 | *Genetic Algorithm optimised depot positions* | *K-Means + Decision Tree risk prediction* |
 
 <br/>
 
 <!-- Full UI screenshot — widest one, shows log panel + all overlays -->
 <!-- <img src="assets/full-ui.png" width="900"/> -->
-`[📸 PASTE YOUR FULL UI SCREENSHOT HERE — shows event log, router tab, stats panel]`
+<img width="1919" height="937" alt="image" src="https://github.com/user-attachments/assets/175645b5-431b-4aed-8613-f64406737bff" />
+
+<img width="1919" height="935" alt="image" src="https://github.com/user-attachments/assets/3d0c673f-d634-422e-b61b-8a5d26997562" />
+
+<img width="1916" height="928" alt="image" src="https://github.com/user-attachments/assets/7200f41a-51bb-4cad-bd4a-df159eaf0fa9" />
+
+
+
 
 <!-- Optional: animated GIF of the simulation running -->
 <!-- <img src="assets/demo.gif" width="900"/> -->
@@ -85,15 +93,15 @@ The system runs a **20-step simulation** where:
 ## ⚡ Five Challenges, Five Algorithms
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    SHARED CITY GRAPH                           │
-│                  (single source of truth)                      │
-├──────────┬──────────┬──────────┬──────────┬────────────────────┤
-│   C1     │   C2     │   C3     │   C4     │        C5          │
-│  CSP     │ Kruskal  │   GA     │   A*     │ K-Means + Dec.Tree │
-│ Layout   │   MST    │  Ambu-   │ Routing  │ Crime Prediction   │
-│Planning  │  Roads   │  lance   │ (live)   │  → risk weights    │
-└──────────┴──────────┴──────────┴──────────┴────────────────────┘
+               ┌────────────────────────────────────────────────────────────────┐
+               │                    SHARED CITY GRAPH                           │
+               │                  (single source of truth)                      │
+               ├──────────┬──────────┬──────────┬──────────┬────────────────────┤
+               │   C1     │   C2     │   C3     │   C4     │        C5          │
+               │  CSP     │ Kruskal  │   GA     │   A*     │ K-Means + Dec.Tree │
+               │ Layout   │   MST    │  Ambu-   │ Routing  │ Crime Prediction   │
+               │Planning  │  Roads   │  lance   │ (live)   │  → risk weights    │
+               └──────────┴──────────┴──────────┴──────────┴────────────────────┘
 ```
 
 ### Challenge 1 — City Layout Planning
