@@ -69,8 +69,6 @@
 
 <!-- Optional: animated GIF of the simulation running -->
 <!-- <img src="assets/demo.gif" width="900"/> -->
-`[🎬 OPTIONAL: PASTE A GIF OF THE SIMULATION RUNNING HERE]`
-
 </div>
 
 ---
