@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CityMind — Urban Intelligence System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #020b18;
+  --surface:   #071828;
+  --surface2:  #0d2236;
+  --border:    #1a3a5c;
+  --accent:    #00d4ff;
+  --accent2:   #ff6b35;
+  --accent3:   #a855f7;
+  --green:     #22c55e;
+  --yellow:    #fbbf24;
+  --red:       #ef4444;
+  --text:      #e2f4ff;
+  --muted:     #4a7a9b;
+  --glow:      0 0 20px rgba(0,212,255,0.3);
+  --glow2:     0 0 30px rgba(0,212,255,0.15);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; overflow:hidden; }
+
+/* ── SCANLINE OVERLAY ── */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+}
+
+/* ── HEADER ── */
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 24px; border-bottom:1px solid var(--border);
+  background:linear-gradient(90deg,#020b18 0%,#071828 50%,#020b18 100%);
+  position:relative; z-index:10;
+}
+.logo {
+  font-family:'Orbitron',sans-serif; font-weight:900; font-size:1.5rem;
+  color:var(--accent); text-shadow:var(--glow); letter-spacing:.1em;
+}
+.logo span { color:var(--accent2); }
+.header-status { display:flex; gap:16px; align-items:center; }
+.status-pill {
+  padding:4px 12px; border-radius:20px; font-size:.65rem; font-weight:700;
+  border:1px solid var(--border); text-transform:uppercase; letter-spacing:.1em;
+}
+.status-pill.active  { border-color:var(--green); color:var(--green); background:rgba(34,197,94,.1); }
+.status-pill.waiting { border-color:var(--muted);  color:var(--muted); }
+.step-counter { font-size:.75rem; color:var(--muted); }
+.step-counter strong { color:var(--accent); }
+
+/* ── MAIN LAYOUT ── */
+main {
+  display:grid; grid-template-columns:220px 1fr 280px;
+  grid-template-rows:calc(100vh - 57px);
+  gap:0;
+}
+
+/* ── LEFT PANEL ── */
+.left-panel {
+  border-right:1px solid var(--border); padding:16px 12px;
+  display:flex; flex-direction:column; gap:12px; overflow-y:auto;
+  background:var(--surface);
+}
+.panel-title {
+  font-family:'Orbitron',sans-serif; font-size:.6rem; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.15em; margin-bottom:4px;
+}
+.ctrl-btn {
+  width:100%; padding:10px; border:1px solid var(--border);
+  background:transparent; color:var(--text); font-family:'Space Mono',monospace;
+  font-size:.7rem; cursor:pointer; text-transform:uppercase; letter-spacing:.08em;
+  border-radius:4px; transition:all .2s; text-align:left;
+  display:flex; align-items:center; gap:8px;
+}
+.ctrl-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(0,212,255,.05); box-shadow:var(--glow2); }
+.ctrl-btn.primary { border-color:var(--accent); color:var(--accent); }
+.ctrl-btn.danger  { border-color:var(--red); color:var(--red); }
+.ctrl-btn .ico { font-size:1rem; }
+.ctrl-btn.active  { background:rgba(0,212,255,.15); border-color:var(--accent); }
+
+.divider { border:none; border-top:1px solid var(--border); margin:4px 0; }
+
+.view-group { display:flex; flex-direction:column; gap:6px; }
+
+/* Legend */
+.legend { display:flex; flex-direction:column; gap:4px; }
+.legend-item { display:flex; align-items:center; gap:8px; font-size:.62rem; color:var(--muted); }
+.legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+/* Stats cards */
+.stat-card {
+  border:1px solid var(--border); border-radius:6px; padding:10px;
+  background:var(--surface2);
+}
+.stat-val { font-family:'Orbitron',sans-serif; font-size:1.2rem; color:var(--accent); }
+.stat-lbl { font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-top:2px; }
+
+/* ── CENTRE: CITY GRID ── */
+.centre { display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+.grid-wrapper {
+  position:relative; width:min(calc(100vh - 120px), calc(100vw - 520px));
+  aspect-ratio:1/1;
+}
+#cityCanvas { width:100%; height:100%; cursor:crosshair; display:block; }
+
+.grid-overlay-label {
+  position:absolute; top:12px; left:50%; transform:translateX(-50%);
+  font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.15em;
+  background:rgba(2,11,24,.8); padding:4px 12px; border-radius:20px; border:1px solid var(--border);
+}
+
+/* Loading */
+#loadingOverlay {
+  position:absolute; inset:0; background:rgba(2,11,24,.9);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px; z-index:100;
+}
+.spinner {
+  width:48px; height:48px; border:3px solid var(--border);
+  border-top-color:var(--accent); border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-family:'Orbitron',sans-serif; color:var(--accent); font-size:.8rem; letter-spacing:.1em; }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  border-left:1px solid var(--border); display:flex; flex-direction:column;
+  background:var(--surface); overflow:hidden;
+}
+.tab-bar {
+  display:flex; border-bottom:1px solid var(--border);
+}
+.tab {
+  flex:1; padding:10px 6px; font-size:.6rem; text-align:center; cursor:pointer;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--muted);
+  border-bottom:2px solid transparent; transition:all .2s;
+}
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); background:rgba(0,212,255,.05); }
+.tab:hover  { color:var(--text); }
+
+.tab-content { flex:1; overflow-y:auto; padding:12px; display:none; }
+.tab-content.active { display:block; }
+
+/* Event log */
+#eventLog { display:flex; flex-direction:column; gap:4px; }
+.log-entry {
+  font-size:.62rem; line-height:1.5; padding:6px 8px; border-radius:4px;
+  border-left:2px solid var(--border); background:var(--surface2);
+  animation:fadeIn .3s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateX(8px); } to { opacity:1; } }
+.log-entry.ok    { border-left-color:var(--green); }
+.log-entry.warn  { border-left-color:var(--yellow); }
+.log-entry.err   { border-left-color:var(--red); }
+.log-entry.info  { border-left-color:var(--accent); }
+.log-entry .ts   { color:var(--muted); font-size:.55rem; }
+
+/* Router state */
+.router-card {
+  border:1px solid var(--border); border-radius:6px; padding:12px;
+  background:var(--surface2); margin-bottom:8px;
+}
+.router-card h4 { font-size:.65rem; color:var(--accent); margin-bottom:8px; text-transform:uppercase; letter-spacing:.1em; }
+.path-viz { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.path-node {
+  padding:2px 6px; border-radius:3px; font-size:.6rem;
+  background:rgba(0,212,255,.1); border:1px solid var(--accent);
+  color:var(--accent);
+}
+.path-node.current { background:var(--accent); color:var(--bg); }
+.path-node.target  { background:rgba(255,107,53,.2); border-color:var(--accent2); color:var(--accent2); }
+
+/* Crime risk panel */
+.risk-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:5px 8px; border-radius:4px; font-size:.62rem;
+  border:1px solid var(--border); margin-bottom:4px;
+  background:var(--surface2);
+}
+.risk-badge {
+  padding:2px 8px; border-radius:10px; font-size:.58rem; font-weight:700;
+}
+.risk-badge.High   { background:rgba(239,68,68,.2);  color:var(--red);    border:1px solid var(--red); }
+.risk-badge.Medium { background:rgba(251,191,36,.15); color:var(--yellow); border:1px solid var(--yellow); }
+.risk-badge.Low    { background:rgba(34,197,94,.1);  color:var(--green);  border:1px solid var(--green); }
+
+/* Progress bar */
+.progress-bar-wrap { height:4px; background:var(--surface2); border-radius:2px; overflow:hidden; margin-top:8px; }
+.progress-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent3)); border-radius:2px; transition:width .4s; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:var(--surface); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* Tooltip */
+#tooltip {
+  position:fixed; pointer-events:none; background:var(--surface2);
+  border:1px solid var(--accent); border-radius:6px; padding:8px 12px;
+  font-size:.65rem; color:var(--text); z-index:1000; max-width:200px;
+  box-shadow:var(--glow); display:none; line-height:1.6;
+}
+
+/* Heatmap overlay canvas */
+#heatCanvas {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  pointer-events:none; opacity:.45;
+}
+
+/* Pulse animation for ambulances */
+@keyframes pulse-ring {
+  0%   { transform:scale(.9); opacity:.8; }
+  100% { transform:scale(1.4); opacity:0; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">City<span>Mind</span> <span style="font-size:.7rem;color:var(--muted);font-weight:400">v2.0</span></div>
+  <div class="header-status">
+    <div class="status-pill waiting" id="sysStatus">OFFLINE</div>
+    <div class="step-counter">Step <strong id="stepNum">0</strong> / <strong id="maxStep">20</strong></div>
+    <div class="status-pill" id="missionStatus" style="border-color:var(--muted);color:var(--muted)">MISSION IDLE</div>
+  </div>
+</header>
+
+<main>
+<!-- LEFT PANEL -->
+<div class="left-panel">
+  <div class="panel-title">⚙ System Controls</div>
+
+  <button class="ctrl-btn primary" id="btnInit" onclick="initSim()">
+    <span class="ico">🏙️</span> Initialise City
+  </button>
+  <button class="ctrl-btn" id="btnStep" onclick="stepSim()" disabled>
+    <span class="ico">⏭</span> Next Step
+  </button>
+  <button class="ctrl-btn" id="btnRun" onclick="runAll()" disabled>
+    <span class="ico">▶▶</span> Run All Steps
+  </button>
+  <button class="ctrl-btn danger" onclick="resetSim()">
+    <span class="ico">↺</span> Reset
+  </button>
+
+  <hr class="divider">
+  <div class="panel-title">👁 View Overlay</div>
+  <div class="view-group">
+    <button class="ctrl-btn active" id="vCity"   onclick="setView('city')">  <span class="ico">🗺</span> City Layout</button>
+    <button class="ctrl-btn"        id="vRoads"  onclick="setView('roads')"> <span class="ico">🛣</span> Road Network</button>
+    <button class="ctrl-btn"        id="vAmb"    onclick="setView('amb')">   <span class="ico">🚑</span> Ambulance Coverage</button>
+    <button class="ctrl-btn"        id="vCrime"  onclick="setView('crime')"> <span class="ico">🔴</span> Crime Heatmap</button>
+  </div>
+
+  <hr class="divider">
+  <div class="panel-title">📊 Stats</div>
+  <div class="stat-card"><div class="stat-val" id="statNodes">0</div><div class="stat-lbl">Total Nodes</div></div>
+  <div class="stat-card"><div class="stat-val" id="statEdges">0</div><div class="stat-lbl">Active Roads</div></div>
+  <div class="stat-card"><div class="stat-val" id="statBlocked">0</div><div class="stat-lbl">Blocked Roads</div></div>
+  <div class="stat-card"><div class="stat-val" id="statRescued">0</div><div class="stat-lbl">Rescued Civilians</div></div>
+
+  <hr class="divider">
+  <div class="panel-title">🏷 Legend</div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<!-- CENTRE: CANVAS -->
+<div class="centre">
+  <div class="grid-wrapper">
+    <canvas id="cityCanvas"></canvas>
+    <canvas id="heatCanvas"></canvas>
+    <div class="grid-overlay-label" id="overlayLabel">CITY LAYOUT</div>
+    <div id="loadingOverlay">
+      <div style="font-family:Orbitron,sans-serif;font-size:1.2rem;color:var(--accent);letter-spacing:.15em;">CITYMIND</div>
+      <div style="font-size:.7rem;color:var(--muted)">Urban Intelligence System</div>
+      <button class="ctrl-btn primary" style="margin-top:16px;width:180px;justify-content:center" onclick="initSim()">⚡ Initialise</button>
+    </div>
+  </div>
+  <div class="progress-bar-wrap" style="width:min(calc(100vh - 120px), calc(100vw - 520px));margin-top:8px;">
+    <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('log',this)">📋 Log</div>
+    <div class="tab"        onclick="switchTab('router',this)">🚑 Router</div>
+    <div class="tab"        onclick="switchTab('crime',this)">🔴 Risk</div>
+  </div>
+
+  <!-- EVENT LOG -->
+  <div class="tab-content active" id="tab-log">
+    <div id="eventLog"><div class="log-entry info"><span class="ts">--:--:--</span> System ready. Initialise to begin.</div></div>
+  </div>
+
+  <!-- ROUTER STATE -->
+  <div class="tab-content" id="tab-router">
+    <div class="router-card">
+      <h4>🚑 Team Position</h4>
+      <div id="routerPos" style="font-family:Orbitron,sans-serif;font-size:1.4rem;color:var(--accent)">—</div>
+    </div>
+    <div class="router-card">
+      <h4>🎯 Remaining Targets</h4>
+      <div id="routerTargets" class="path-viz"></div>
+    </div>
+    <div class="router-card">
+      <h4>✅ Rescued</h4>
+      <div id="routerRescued" class="path-viz"></div>
+    </div>
+    <div class="router-card">
+      <h4>📍 Current A* Path</h4>
+      <div id="routerPath" class="path-viz"></div>
+    </div>
+    <div class="router-card">
+      <h4>💰 Total Travel Cost</h4>
+      <div id="routerCost" style="font-family:Orbitron,sans-serif;font-size:1.2rem;color:var(--yellow)">0.00</div>
+    </div>
+  </div>
+
+  <!-- CRIME RISK -->
+  <div class="tab-content" id="tab-crime">
+    <div style="font-size:.62rem;color:var(--muted);margin-bottom:8px;">Top risk nodes (sorted by severity)</div>
+    <div id="crimeList"></div>
+  </div>
+</div>
+</main>
+
+<div id="tooltip"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let state = null;
+let currentView = 'city';
+const canvas   = document.getElementById('cityCanvas');
+const heatCvs  = document.getElementById('heatCanvas');
+const ctx      = canvas.getContext('2d');
+const heatCtx  = heatCvs.getContext('2d');
+const tooltip  = document.getElementById('tooltip');
+
+const TYPE_ICONS = {
+  Residential:'🏘', Hospital:'🏥', School:'🏫',
+  Industrial:'🏭', PowerPlant:'⚡', AmbulanceDepot:'🚑', Empty:'·'
+};
+const TYPE_COLORS = {
+  Residential:'#4ade80', Hospital:'#f87171', School:'#60a5fa',
+  Industrial:'#fbbf24', PowerPlant:'#a78bfa', AmbulanceDepot:'#fb923c', Empty:'#1e293b'
+};
+const RISK_COLORS = { High:'#ef4444', Medium:'#fbbf24', Low:'#22c55e' };
+
+// ════════════════════════════════════════════════════════
+//  API
+// ════════════════════════════════════════════════════════
+async function api(url, method='GET', body=null) {
+  showLoading(true);
+  try {
+    const opts = { method, headers:{'Content-Type':'application/json'} };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(url, opts);
+    return await r.json();
+  } finally { showLoading(false); }
+}
+
+async function initSim() {
+  state = await api('/api/init','POST');
+  document.getElementById('loadingOverlay').style.display='none';
+  document.getElementById('btnStep').disabled = false;
+  document.getElementById('btnRun').disabled  = false;
+  document.getElementById('sysStatus').textContent = 'ONLINE';
+  document.getElementById('sysStatus').className = 'status-pill active';
+  updateUI();
+}
+
+async function stepSim() {
+  if (!state || state.step >= state.max_steps) return;
+  state = await api('/api/step','POST');
+  updateUI();
+}
+
+async function runAll() {
+  if (!state) return;
+  document.getElementById('btnRun').disabled = true;
+  while (state.step < state.max_steps) {
+    state = await api('/api/step','POST');
+    updateUI();
+    await new Promise(r => setTimeout(r, 200));
+  }
+  document.getElementById('btnRun').disabled = false;
+}
+
+function resetSim() {
+  state = null;
+  document.getElementById('loadingOverlay').style.display='flex';
+  document.getElementById('btnStep').disabled = true;
+  document.getElementById('btnRun').disabled  = true;
+  document.getElementById('sysStatus').textContent = 'OFFLINE';
+  document.getElementById('sysStatus').className = 'status-pill waiting';
+  document.getElementById('stepNum').textContent = '0';
+  clearCanvas();
+}
+
+// ════════════════════════════════════════════════════════
+//  UPDATE UI
+// ════════════════════════════════════════════════════════
+function updateUI() {
+  if (!state) return;
+  document.getElementById('stepNum').textContent   = state.step;
+  document.getElementById('maxStep').textContent   = state.max_steps;
+  document.getElementById('progressBar').style.width = (state.step/state.max_steps*100)+'%';
+
+  const g = state.graph;
+  document.getElementById('statNodes').textContent   = Object.keys(g.nodes).length;
+  const edges = Object.values(g.edges);
+  document.getElementById('statEdges').textContent   = edges.filter(e=>!e.blocked).length;
+  document.getElementById('statBlocked').textContent = edges.filter(e=> e.blocked).length;
+
+  const r = state.router;
+  document.getElementById('statRescued').textContent  = (r.visited||[]).length;
+
+  // Mission status
+  const ms = document.getElementById('missionStatus');
+  if (r.targets && r.targets.length > 0) {
+    ms.textContent = 'MISSION ACTIVE'; ms.style.borderColor='var(--green)'; ms.style.color='var(--green)';
+  } else if (r.visited && r.visited.length > 0) {
+    ms.textContent = 'COMPLETE'; ms.style.borderColor='var(--accent)'; ms.style.color='var(--accent)';
+  }
+
+  drawCity();
+  updateEventLog();
+  updateRouterPanel();
+  updateCrimePanel();
+  buildLegend();
+}
+
+// ════════════════════════════════════════════════════════
+//  CANVAS DRAWING
+// ════════════════════════════════════════════════════════
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  const size = Math.min(wrap.clientWidth, wrap.clientHeight);
+  canvas.width = heatCvs.width = size;
+  canvas.height = heatCvs.height = size;
+}
+
+function clearCanvas() {
+  resizeCanvas();
+  ctx.fillStyle = '#020b18';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+function drawCity() {
+  if (!state) return;
+  resizeCanvas();
+  const g = state.graph;
+  const N = g.size;
+  const pad = 20;
+  const cell = (canvas.width - pad*2) / N;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#020b18';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // ── Grid lines ──
+  ctx.strokeStyle = '#0d2236'; ctx.lineWidth = .5;
+  for (let i=0; i<=N; i++) {
+    const x = pad + i*cell, y = pad + i*cell;
+    ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,pad+N*cell); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(pad+N*cell,y); ctx.stroke();
+  }
+
+  // ── Edges ──
+  if (currentView !== 'city') {
+    for (const [key, edata] of Object.entries(g.edges)) {
+      const [u,v] = key.split(',').map(Number);
+      const nu = g.nodes[u], nv = g.nodes[v];
+      const x1 = pad + nu.col*cell + cell/2;
+      const y1 = pad + nu.row*cell + cell/2;
+      const x2 = pad + nv.col*cell + cell/2;
+      const y2 = pad + nv.row*cell + cell/2;
+
+      if (edata.blocked) {
+        ctx.strokeStyle = '#ef444480'; ctx.lineWidth = 2;
+        ctx.setLineDash([4,4]);
+      } else {
+        if (currentView === 'roads') {
+          ctx.strokeStyle = '#00d4ff50'; ctx.lineWidth = 2;
+        } else {
+          ctx.strokeStyle = '#1a3a5c'; ctx.lineWidth = 1;
+        }
+        ctx.setLineDash([]);
+      }
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // ── Ambulance coverage circles ──
+  if (currentView === 'amb' && state.ambulances) {
+    for (const aid of state.ambulances) {
+      const n = g.nodes[aid];
+      if (!n) continue;
+      const cx = pad + n.col*cell + cell/2;
+      const cy = pad + n.row*cell + cell/2;
+      const r = cell * 2.5;
+      const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+      grad.addColorStop(0,'rgba(251,146,60,0.25)');
+      grad.addColorStop(1,'rgba(251,146,60,0)');
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = 'rgba(251,146,60,0.4)'; ctx.lineWidth = 1;
+      ctx.setLineDash([6,4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  // ── Crime heatmap ──
+  heatCtx.clearRect(0,0,heatCvs.width,heatCvs.height);
+  if (currentView === 'crime') {
+    for (const [id, node] of Object.entries(g.nodes)) {
+      const cx = pad + node.col*cell + cell/2;
+      const cy = pad + node.row*cell + cell/2;
+      const cr = node.crime_risk || 'Low';
+      const col = cr==='High'?'255,0,0': cr==='Medium'?'255,200,0':'0,200,100';
+      const alpha = cr==='High'?.6 : cr==='Medium'?.35:.15;
+      heatCtx.fillStyle = `rgba(${col},${alpha})`;
+      heatCtx.fillRect(pad+node.col*cell, pad+node.row*cell, cell, cell);
+    }
+  }
+
+  // ── Nodes ──
+  for (const [id, node] of Object.entries(g.nodes)) {
+    const cx = pad + node.col*cell + cell/2;
+    const cy = pad + node.row*cell + cell/2;
+    const r  = cell * 0.38;
+    const t  = node.type;
+    const col = TYPE_COLORS[t] || '#1e293b';
+
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    if (t !== 'Empty') {
+      const grd = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+      grd.addColorStop(0, col+'cc');
+      grd.addColorStop(1, col+'44');
+      ctx.fillStyle = grd;
+      ctx.shadowColor = col; ctx.shadowBlur = 8;
+    } else {
+      ctx.fillStyle = '#0d2236';
+      ctx.shadowBlur = 0;
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    if (t !== 'Empty') {
+      ctx.strokeStyle = col; ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Icon
+    const fs = Math.max(8, cell*0.38);
+    ctx.font = `${fs}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = '#fff';
+    ctx.shadowBlur = 0;
+    ctx.fillText(TYPE_ICONS[t]||'', cx, cy);
+  }
+
+  // ── A* path ──
+  const rtr = state.router;
+  if (rtr && rtr.path && rtr.path.length > 1) {
+    ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 3;
+    ctx.setLineDash([6,3]); ctx.shadowColor='#00d4ff'; ctx.shadowBlur=12;
+    ctx.beginPath();
+    for (let i=0; i<rtr.path.length; i++) {
+      const n = g.nodes[rtr.path[i]];
+      const x = pad + n.col*cell + cell/2;
+      const y = pad + n.row*cell + cell/2;
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]); ctx.shadowBlur=0;
+  }
+
+  // ── Highlight targets ──
+  if (rtr && rtr.targets) {
+    for (const tid of rtr.targets) {
+      const n = g.nodes[tid];
+      if (!n) continue;
+      const cx = pad + n.col*cell + cell/2;
+      const cy = pad + n.row*cell + cell/2;
+      ctx.strokeStyle = '#ff6b35'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx,cy,cell*0.48,0,Math.PI*2); ctx.stroke();
+      // crosshair
+      ctx.beginPath(); ctx.moveTo(cx-cell*.4,cy); ctx.lineTo(cx+cell*.4,cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx,cy-cell*.4); ctx.lineTo(cx,cy+cell*.4); ctx.stroke();
+    }
+  }
+
+  // ── Team position ──
+  if (rtr && rtr.position != null) {
+    const n = g.nodes[rtr.position];
+    if (n) {
+      const cx = pad + n.col*cell + cell/2;
+      const cy = pad + n.row*cell + cell/2;
+      ctx.shadowColor='#00d4ff'; ctx.shadowBlur=20;
+      ctx.strokeStyle='#00d4ff'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(cx,cy,cell*0.52,0,Math.PI*2); ctx.stroke();
+      ctx.shadowBlur=0;
+    }
+  }
+
+  // ── Blocked roads X marks ──
+  for (const [key, edata] of Object.entries(g.edges)) {
+    if (!edata.blocked) continue;
+    const [u,v] = key.split(',').map(Number);
+    const nu = g.nodes[u], nv = g.nodes[v];
+    const mx = pad + (nu.col+nv.col)/2*cell + cell/2;
+    const my = pad + (nu.row+nv.row)/2*cell + cell/2;
+    ctx.strokeStyle='#ef4444'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(mx-5,my-5); ctx.lineTo(mx+5,my+5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mx+5,my-5); ctx.lineTo(mx-5,my+5); ctx.stroke();
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  TOOLTIP
+// ════════════════════════════════════════════════════════
+canvas.addEventListener('mousemove', e => {
+  if (!state) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width/rect.width);
+  const my = (e.clientY - rect.top)  * (canvas.height/rect.height);
+  const N   = state.graph.size;
+  const pad = 20;
+  const cell= (canvas.width-pad*2)/N;
+  const col = Math.floor((mx-pad)/cell);
+  const row = Math.floor((my-pad)/cell);
+  if (col<0||col>=N||row<0||row>=N) { tooltip.style.display='none'; return; }
+  const nid  = row*N+col;
+  const node = state.graph.nodes[nid];
+  if (!node) { tooltip.style.display='none'; return; }
+  tooltip.style.display='block';
+  tooltip.style.left = (e.clientX+14)+'px';
+  tooltip.style.top  = (e.clientY-10)+'px';
+  tooltip.innerHTML =
+    `<strong>${TYPE_ICONS[node.type]} ${node.type}</strong><br>
+     Node ID: ${nid}<br>
+     Population: ${node.population_density.toFixed(1)}<br>
+     Crime Risk: <span style="color:${RISK_COLORS[node.crime_risk]}">${node.crime_risk}</span><br>
+     Risk Multiplier: ×${node.risk_multiplier.toFixed(1)}<br>
+     Accessible: ${node.accessible?'✅':'❌'}`;
+});
+canvas.addEventListener('mouseleave', () => tooltip.style.display='none');
+
+// ════════════════════════════════════════════════════════
+//  EVENT LOG
+// ════════════════════════════════════════════════════════
+function updateEventLog() {
+  if (!state) return;
+  const logEl = document.getElementById('eventLog');
+  logEl.innerHTML = '';
+  const entries = [...state.event_log].reverse();
+  for (const entry of entries) {
+    const div = document.createElement('div');
+    div.className = 'log-entry ' + classifyLog(entry);
+    div.innerHTML = entry.replace(/\[(\d\d:\d\d:\d\d)\]/,'<span class="ts">[$1]</span>');
+    logEl.appendChild(div);
+  }
+}
+
+function classifyLog(msg) {
+  if (msg.includes('✅')) return 'ok';
+  if (msg.includes('⚠️')||msg.includes('🚧')||msg.includes('⚡')) return 'warn';
+  if (msg.includes('❌')) return 'err';
+  return 'info';
+}
+
+// ════════════════════════════════════════════════════════
+//  ROUTER PANEL
+// ════════════════════════════════════════════════════════
+function updateRouterPanel() {
+  if (!state) return;
+  const r = state.router;
+  document.getElementById('routerPos').textContent = r.position ?? '—';
+  document.getElementById('routerCost').textContent = (r.cost||0).toFixed(2);
+
+  const mkNode = (id, cls='') =>
+    `<span class="path-node ${cls}">${id}</span>`;
+
+  document.getElementById('routerTargets').innerHTML =
+    (r.targets||[]).map(t => mkNode(t,'target')).join('') || '<span style="color:var(--muted);font-size:.6rem">None</span>';
+
+  document.getElementById('routerRescued').innerHTML =
+    (r.visited||[]).map(t => mkNode(t,'ok')).join('') || '<span style="color:var(--muted);font-size:.6rem">None yet</span>';
+
+  const path = r.path||[];
+  document.getElementById('routerPath').innerHTML =
+    path.map((n,i) => mkNode(n, i===0?'current':'')).join('→') ||
+    '<span style="color:var(--muted);font-size:.6rem">No path</span>';
+}
+
+// ════════════════════════════════════════════════════════
+//  CRIME PANEL
+// ════════════════════════════════════════════════════════
+function updateCrimePanel() {
+  if (!state) return;
+  const nodes = Object.values(state.graph.nodes)
+    .filter(n => n.type !== 'Empty')
+    .sort((a,b) => {
+      const order = {High:0,Medium:1,Low:2};
+      return order[a.crime_risk] - order[b.crime_risk];
+    })
+    .slice(0,20);
+
+  document.getElementById('crimeList').innerHTML = nodes.map(n =>
+    `<div class="risk-row">
+      <span>${TYPE_ICONS[n.type]} ${n.type} #${n.id}</span>
+      <span class="risk-badge ${n.crime_risk}">${n.crime_risk}</span>
+    </div>`
+  ).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  LEGEND
+// ════════════════════════════════════════════════════════
+function buildLegend() {
+  const leg = document.getElementById('legend');
+  if (leg.children.length > 0) return; // built once
+  for (const [t,col] of Object.entries(TYPE_COLORS)) {
+    if (t==='Empty') continue;
+    leg.innerHTML += `<div class="legend-item">
+      <div class="legend-dot" style="background:${col}"></div>
+      <span>${TYPE_ICONS[t]} ${t}</span>
+    </div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  VIEW SWITCHER
+// ════════════════════════════════════════════════════════
+const VIEW_LABELS = {city:'CITY LAYOUT',roads:'ROAD NETWORK',amb:'AMBULANCE COVERAGE',crime:'CRIME HEATMAP'};
+function setView(v) {
+  currentView = v;
+  ['vCity','vRoads','vAmb','vCrime'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const map = {city:'vCity',roads:'vRoads',amb:'vAmb',crime:'vCrime'};
+  document.getElementById(map[v]).classList.add('active');
+  document.getElementById('overlayLabel').textContent = VIEW_LABELS[v];
+  if (state) drawCity();
+}
+
+// ════════════════════════════════════════════════════════
+//  TAB SWITCHER
+// ════════════════════════════════════════════════════════
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════
+//  LOADING OVERLAY (for API calls)
+// ════════════════════════════════════════════════════════
+let _loadingTimer = null;
+function showLoading(on) {
+  // Only show spinner for slow calls (>300ms)
+  if (on) {
+    _loadingTimer = setTimeout(()=>{
+      // show subtle overlay on canvas
+    },300);
+  } else {
+    clearTimeout(_loadingTimer);
+  }
+}
+
+// ── KEYBOARD SHORTCUTS ──
+document.addEventListener('keydown', e => {
+  if (e.key === ' ') { e.preventDefault(); stepSim(); }
+  if (e.key === 'r' || e.key === 'R') resetSim();
+  if (e.key === '1') setView('city');
+  if (e.key === '2') setView('roads');
+  if (e.key === '3') setView('amb');
+  if (e.key === '4') setView('crime');
+});
+
+window.addEventListener('resize', () => { if (state) drawCity(); });
+
+// ── INITIAL DRAW ──
+clearCanvas();
+buildLegend();
+</script>
+</body>
+</html>
